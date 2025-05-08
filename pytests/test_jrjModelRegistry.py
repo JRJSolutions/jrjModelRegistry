@@ -17,5 +17,6 @@ sys.path.insert(
 
 def test_test():
     from jrjModelRegistry import JrjMlModelRegistry
-    jrjMlReg = JrjMlModelRegistry()
-    assert jrjMlReg.test(1) == 11
+    jrjMlReg = JrjMlModelRegistry({})
+    res = jrjMlReg.test(1)
+    assert res == 1
