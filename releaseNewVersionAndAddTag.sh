@@ -12,7 +12,8 @@ yarn run test
 new_version=$(node -p "require('./package.json').version")
 
 
-python setup.py sdist bdist_wheel
+python -m build
+
 
 twine upload dist/*
 

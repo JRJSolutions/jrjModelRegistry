@@ -17,48 +17,48 @@ function incrementVersion(version) {
   return `${major}.${minor}.${patch}`;
 }
 
-function updateSetupPy(newVersion) {
-  const setupPyPath = path.join(__dirname, "setup.py");
-  let setupPyContent = fs.readFileSync(setupPyPath, "utf8");
-  setupPyContent = setupPyContent.replace(
-    /version=['"](\d+\.\d+\.\d+)['"]/,
-    `version='${newVersion}'`
+function updatePyprojectToml(newVersion) {
+  const filePath = path.join(__dirname, "pyproject.toml");
+  let content = fs.readFileSync(filePath, "utf8");
+
+  const updatedContent = content.replace(
+    /version\s*=\s*["'](\d+\.\d+\.\d+)["']/,
+    `version = "${newVersion}"`
   );
-  fs.writeFileSync(setupPyPath, setupPyContent, "utf8");
+
+  fs.writeFileSync(filePath, updatedContent, "utf8");
 }
 
 function updatePackageJson(newVersion) {
-  const packageJsonPath = path.join(__dirname, "package.json");
-  const packageJsonContent = JSON.parse(
-    fs.readFileSync(packageJsonPath, "utf8")
-  );
-  packageJsonContent.version = newVersion;
-  fs.writeFileSync(
-    packageJsonPath,
-    JSON.stringify(packageJsonContent, null, 2),
-    "utf8"
-  );
+  const filePath = path.join(__dirname, "package.json");
+  if (!fs.existsSync(filePath)) return;
+
+  const packageJson = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  packageJson.version = newVersion;
+  fs.writeFileSync(filePath, JSON.stringify(packageJson, null, 2), "utf8");
 }
 
 function main() {
-  const setupPyPath = path.join(__dirname, "setup.py");
-  const setupPyContent = fs.readFileSync(setupPyPath, "utf8");
-  const currentVersionMatch = setupPyContent.match(
-    /version=['"](\d+\.\d+\.\d+)['"]/
-  );
-
-  if (!currentVersionMatch) {
-    console.error("Failed to find version in setup.py");
+  const pyprojectPath = path.join(__dirname, "pyproject.toml");
+  if (!fs.existsSync(pyprojectPath)) {
+    console.error("pyproject.toml not found.");
     process.exit(1);
   }
 
-  const currentVersion = currentVersionMatch[1];
+  const content = fs.readFileSync(pyprojectPath, "utf8");
+  const match = content.match(/version\s*=\s*["'](\d+\.\d+\.\d+)["']/);
+  if (!match) {
+    console.error("Failed to find version in pyproject.toml");
+    process.exit(1);
+  }
+
+  const currentVersion = match[1];
   const newVersion = incrementVersion(currentVersion);
 
-  updateSetupPy(newVersion);
+  updatePyprojectToml(newVersion);
   updatePackageJson(newVersion);
 
-  console.log(`Version updated to ${newVersion}`);
+  console.log(`✅ Version updated to ${newVersion}`);
 }
 
 main();
