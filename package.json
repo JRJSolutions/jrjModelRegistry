@@ -1,6 +1,6 @@
 {
   "name": "jrjModelRegistry",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "True way to save and serve python models",
   "main": "index.js",
   "repository": "git@github.com:JRJSolutions/jrjModelRegistry.git",
@@ -13,6 +13,7 @@
   "scripts": {
     "increase-version": "./increaseVersion.ts",
     "test": "pytest -s -v",
+    "test-cov": "pytest --cov=jrjModelRegistry  --cov-report=html -s -v && open htmlcov/index.html",
     "releaseNewVersionAndAddTag": "./releaseNewVersionAndAddTag.sh",
     "healthy-check": "ls -la"
   }
