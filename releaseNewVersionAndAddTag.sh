@@ -2,6 +2,8 @@
 
 set -e
 
+source venv/bin/activate
+
 rm -rf build
 rm -rf dist
 
