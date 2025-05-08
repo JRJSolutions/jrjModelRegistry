@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='jrjModelRegistry',
-    version='0.0.9',
+    version='0.0.10',
     packages=find_packages(),
     description='True way to save and serve python models',
     long_description=open('README.md').read(),

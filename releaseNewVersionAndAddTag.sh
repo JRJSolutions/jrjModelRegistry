@@ -1,14 +1,16 @@
 #!/bin/bash
 
 set -e
-./increaseVersion.ts
-
-new_version=$(node -p "require('./package.json').version")
 
 rm -rf build
 rm -rf dist
 
-pytest -s -v
+yarn run test
+
+./increaseVersion.ts
+
+new_version=$(node -p "require('./package.json').version")
+
 
 python setup.py sdist bdist_wheel
 
