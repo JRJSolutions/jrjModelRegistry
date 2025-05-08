@@ -1,0 +1,18 @@
+{
+  "name": "jrjModelRegistry",
+  "version": "0.0.2",
+  "description": "True way to save and serve python models",
+  "main": "index.js",
+  "repository": "git@github.com:JRJSolutions/jrjModelRegistry.git",
+  "author": "Jason Jafari <me@jasonjafari.com>",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "husky": "^9.0.11"
+  },
+  "scripts": {
+    "increase-version": "./increaseVersion.ts",
+    "releaseNewVersionAndAddTag": "./releaseNewVersionAndAddTag.sh",
+    "healthy-check": "ls -la"
+  }
+}
