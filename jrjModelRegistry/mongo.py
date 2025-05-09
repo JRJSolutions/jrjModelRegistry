@@ -55,7 +55,7 @@ def find_model_by_idAndLoadModel(id: str):
 
 def new_model(dataPayload: dict):
     now = datetime.now(UTC)
-    iso_string = now.isoformat() + "Z"
+    iso_string = now.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     dataPayload = {
         **dataPayload,
         "createdAt": iso_string,
@@ -110,7 +110,7 @@ def search_models_common(body: dict):
 
 def update_model(id: str, update_obj: dict):
     now = datetime.now(UTC)
-    iso_string = now.isoformat() + "Z"
+    iso_string = now.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     update_obj['updatedAt'] = iso_string
     result = mongoConfigDict['jrjModelRegistryDbColModels'].update_one(
         {"_id": ObjectId(id)},
