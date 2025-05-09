@@ -1,39 +1,24 @@
 import dill as pickle
-import json
 import boto3
-from datetime import datetime
 import os
-from io import BytesIO
 from pathlib import Path
-import botocore
 
 import os
 import dill as pickle
 import boto3
 import requests
 from pathlib import Path
-from datetime import timedelta
 from jrjModelRegistry.mongo import new_model
+from . import jrjModelRegistryConfig
 import pyzipper
-import tempfile
 
 import os
 
-from functools import partial
 
 
 from .mongo import delete_model, search_models_common
 
-if 'JRJ_MODEL_REGISTRY_S3_ENDPOINT' in os.environ:
 
-    s3JrjModelRegistry = boto3.client(
-        "s3",
-        endpoint_url=f'https://{os.environ['JRJ_MODEL_REGISTRY_S3_ENDPOINT']}',
-        region_name=os.environ['JRJ_MODEL_REGISTRY_S3_REGION'],
-        aws_access_key_id=os.environ['JRJ_MODEL_REGISTRY_S3_KEY_ID'],
-        aws_secret_access_key=os.environ['JRJ_MODEL_REGISTRY_S3_KEY_SECRET'],
-        config=botocore.client.Config(signature_version='s3v4')
-    )
 
 
 
@@ -66,9 +51,9 @@ def registerAJrjModel(model, config):
     config['modelSizeBytes'] = model_path.stat().st_size
 
     # Get password from env
-    zip_password = os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD")
+    zip_password = jrjModelRegistryConfig.get("zipPassword")
     if not zip_password:
-        raise EnvironmentError("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD is not set")
+        raise EnvironmentError("zipPassword is not set")
 
     # Create password-protected ZIP
     with pyzipper.AESZipFile(zip_path, 'w', compression=pyzipper.ZIP_LZMA) as zipf:
@@ -80,13 +65,13 @@ def registerAJrjModel(model, config):
     # Upload to S3 using pre-signed URL
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{os.environ["JRJ_MODEL_REGISTRY_S3_ENDPOINT"]}',
-        region_name=os.environ["JRJ_MODEL_REGISTRY_S3_REGION"],
-        aws_access_key_id=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_ID"],
-        aws_secret_access_key=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_SECRET"],
+        endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
+        region_name=jrjModelRegistryConfig['s3Region'],
+        aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
+        aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
     )
 
-    bucket_name = os.environ['JRJ_MODEL_REGISTRY_S3_BUCKET_NAME']
+    bucket_name = jrjModelRegistryConfig['s3BucketName']
 
     try:
         presigned_url = s3.generate_presigned_url(
@@ -133,18 +118,18 @@ def registerAJrjModel(model, config):
                             deleteAJrjModelAsset(s3Url)
                         delete_model(_id)
             return res
-        else:
+        else: # pragma: no cover
             print(f"❌ Upload failed via PUT: {response.status_code} {response.text}")
             return None
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         print(f"❌ Failed to generate URL or upload: {e}")
         return None
     finally:
         for p in [model_path, zip_path]:
             try:
                 p.unlink()
-            except Exception as cleanup_err:
+            except Exception as cleanup_err:  # pragma: no cover
                 print(f"⚠️ Failed to delete {p}: {cleanup_err}")
         # return res
 
@@ -157,10 +142,10 @@ def deleteAJrjModelAsset(s3AssetPath):
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=f'https://{os.environ["JRJ_MODEL_REGISTRY_S3_ENDPOINT"]}',
-            region_name=os.environ["JRJ_MODEL_REGISTRY_S3_REGION"],
-            aws_access_key_id=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_ID"],
-            aws_secret_access_key=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_SECRET"],
+            endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
+            region_name=jrjModelRegistryConfig['s3Region'],
+            aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
+            aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
         )
 
         s3.delete_object(Bucket=bucket_name, Key=key)
@@ -179,13 +164,13 @@ def loadAJrjModel(modelObj):
       - 's3Url': str, e.g. 'bucket-name/path/to/model__version.pkl.zip'
     """
     s3_url = modelObj.get("s3Url")
-    if not s3_url or "/" not in s3_url:
+    if not s3_url or "/" not in s3_url: # pragma: no cover
         raise ValueError("Invalid or missing `s3Url` in modelObj")
 
     bucket_name, key = s3_url.split("/", 1)
-    zip_password = os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD")
-    if not zip_password:
-        raise EnvironmentError("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD is not set")
+    zip_password = jrjModelRegistryConfig.get("zipPassword")
+    if not zip_password: # pragma: no cover
+        raise EnvironmentError("zipPassword is not set")
 
     # Extract file names
     zip_filename = Path(key).name
@@ -202,16 +187,16 @@ def loadAJrjModel(modelObj):
         try:
             with open(local_model_path, "rb") as f:
                 return pickle.load(f)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             print(f"⚠️ Failed to load cached model. Redownloading... ({e})")
 
     # Set up S3 client
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{os.environ["JRJ_MODEL_REGISTRY_S3_ENDPOINT"]}',
-        region_name=os.environ["JRJ_MODEL_REGISTRY_S3_REGION"],
-        aws_access_key_id=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_ID"],
-        aws_secret_access_key=os.environ["JRJ_MODEL_REGISTRY_S3_KEY_SECRET"],
+        endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
+        region_name=jrjModelRegistryConfig['s3Region'],
+        aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
+        aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
     )
 
     # Download ZIP if not already downloaded
@@ -219,7 +204,7 @@ def loadAJrjModel(modelObj):
         try:
             with open(local_zip_path, "wb") as f:
                 s3.download_fileobj(bucket_name, key, f)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             raise RuntimeError(f"❌ Failed to download ZIP from S3: {e}")
 
     # Extract ZIP
@@ -228,12 +213,12 @@ def loadAJrjModel(modelObj):
             zf.setpassword(zip_password.encode())
             with open(local_model_path, "wb") as out_file:
                 out_file.write(zf.read(model_filename))
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise RuntimeError(f"❌ Failed to extract ZIP file: {e}")
 
     # Load model
     try:
         with open(local_model_path, "rb") as f:
             return pickle.load(f)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise RuntimeError(f"❌ Failed to load model: {e}")

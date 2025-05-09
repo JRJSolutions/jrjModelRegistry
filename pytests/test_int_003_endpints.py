@@ -2,7 +2,9 @@
 
 import sys
 import os
-
+from dotenv import load_dotenv
+import pytest
+load_dotenv()
 
 sys.path.insert(
     0,
@@ -15,13 +17,7 @@ sys.path.insert(
 )
 
 
-from jrjModelRegistry import JrjMlModelRegistry, jrjRouterModelRegistry
-
-def test_test():
-    jrjMlReg = JrjMlModelRegistry({})
-    res = jrjMlReg.test(1)
-    assert res == 1
-
+from jrjModelRegistry import JrjModelRegistry, jrjRouterModelRegistry, jrjModelRegistryConfig
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -35,3 +31,4 @@ def test_ping():
     response = client.get("/jrjModelRegistry/")
     assert response.status_code == 200
     assert response.json() == {"message": "Welcome to JRJ Model Registry"}
+

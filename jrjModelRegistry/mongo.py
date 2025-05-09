@@ -6,26 +6,27 @@ from bson.errors import InvalidId
 import json
 import datetime
 
+from datetime import datetime, UTC
+
 import os
+from . import jrjModelRegistryConfig
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, ObjectId):
             return str(o)
-        if isinstance(o, datetime.datetime):
+        if isinstance(o, datetime):
             return o.isoformat()
         return super().default(o)
 
-
-if 'JRJ_MONGODB_MODEL_REGISTRY' in os.environ:
-
-
-    JRJ_MONGODB_MODEL_REGISTRY = os.environ['JRJ_MONGODB_MODEL_REGISTRY']
-
+jrjModelRegistryDb = ''
+mongoConfigDict = {
+    "jrjModelRegistryDbColModels" : None
+}
 
 
-    clientMongoDb = MongoClient(JRJ_MONGODB_MODEL_REGISTRY, server_api=ServerApi('1'))
-
+def initMongodb():
+    clientMongoDb = MongoClient(jrjModelRegistryConfig['mongoConnection'], server_api=ServerApi('1'))
     try:
         clientMongoDb.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")
@@ -33,31 +34,34 @@ if 'JRJ_MONGODB_MODEL_REGISTRY' in os.environ:
         print(e)
 
     jrjModelRegistryDb = clientMongoDb["jrjModelRegistry"]
-    jrjModelRegistryDbColModels = jrjModelRegistryDb["models"]
-    jrjModelRegistryDbColModels.create_index([("modelName", 1)], background=True)
-    jrjModelRegistryDbColModels.create_index(
+    mongoConfigDict['jrjModelRegistryDbColModels'] = jrjModelRegistryDb["models"]
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("modelName", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index(
         [("modelName", 1), ("version", 1)],
         unique=True,
         background=True
     )
 
+if jrjModelRegistryConfig.get('mongoConnection'):
+    initMongodb()
+
 
 def find_model_by_id(id: str):
-    result = jrjModelRegistryDbColModels.find_one({"_id": ObjectId(id)})
+    result = mongoConfigDict['jrjModelRegistryDbColModels'].find_one({"_id": ObjectId(id)})
     return json.loads(JSONEncoder().encode(result))
 
 def find_model_by_idAndLoadModel(id: str):
     return find_model_by_id(id)
 
 def new_model(dataPayload: dict):
-    now = datetime.datetime.utcnow()
+    now = datetime.now(UTC)
     iso_string = now.isoformat() + "Z"
     dataPayload = {
         **dataPayload,
         "createdAt": iso_string,
         "updatedAt": iso_string
     }
-    result = jrjModelRegistryDbColModels.insert_one(dataPayload)
+    result = mongoConfigDict['jrjModelRegistryDbColModels'].insert_one(dataPayload)
     return find_model_by_id(f"{result.inserted_id}")
 
 
@@ -68,7 +72,7 @@ def search_models(input: dict, type: str = "findMany"):
         search_query.update(input['where'])
 
     if type == "findMany":
-        cursor = jrjModelRegistryDbColModels.find(search_query)
+        cursor = mongoConfigDict['jrjModelRegistryDbColModels'].find(search_query)
 
         # --- Fix for your orderBy format ---
         order_by = input.get('orderBy') or []
@@ -93,7 +97,7 @@ def search_models(input: dict, type: str = "findMany"):
         return list(cursor)
 
     elif type == "count":
-        return jrjModelRegistryDbColModels.count_documents(search_query)
+        return mongoConfigDict['jrjModelRegistryDbColModels'].count_documents(search_query)
 
 
 def search_models_common(body: dict):
@@ -105,15 +109,15 @@ def search_models_common(body: dict):
 
 
 def update_model(id: str, update_obj: dict):
-    now = datetime.datetime.utcnow()
+    now = datetime.now(UTC)
     iso_string = now.isoformat() + "Z"
     update_obj['updatedAt'] = iso_string
-    result = jrjModelRegistryDbColModels.update_one(
+    result = mongoConfigDict['jrjModelRegistryDbColModels'].update_one(
         {"_id": ObjectId(id)},
         {"$set": update_obj}
     )
     return result.modified_count > 0
 
 def delete_model(id: str):
-    result = jrjModelRegistryDbColModels.delete_one({"_id": ObjectId(id)})
+    result = mongoConfigDict['jrjModelRegistryDbColModels'].delete_one({"_id": ObjectId(id)})
     return result.deleted_count > 0

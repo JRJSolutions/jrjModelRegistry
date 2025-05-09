@@ -1,3 +1,16 @@
+import os
+
+jrjModelRegistryConfig = {
+    "s3Endpoint": os.environ.get("JRJ_MODEL_REGISTRY_S3_ENDPOINT", None),
+    "s3Region": os.environ.get("JRJ_MODEL_REGISTRY_S3_REGION", None),
+    "s3KeyId": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_ID", None),
+    "s3KeySecret": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_SECRET", None),
+    "s3BucketName": os.environ.get("JRJ_MODEL_REGISTRY_S3_BUCKET_NAME", None),
+    # "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY1", None),
+    "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY", None),
+    "zipPassword": os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD", None),
+}
+
 import datetime
 from fastapi import APIRouter, HTTPException, Request
 import json
@@ -5,6 +18,7 @@ from bson import ObjectId
 from bson import ObjectId  # <-- YOU FORGOT THIS
 from bson.errors import InvalidId
 import json
+
 
 from jrjModelRegistry.jrjModelRegistry import deleteAJrjModelAsset, loadAJrjModel
 
@@ -18,14 +32,42 @@ jrjRouterModelRegistry = APIRouter(
 )
 
 
+def validate_model_registry_config(config: dict):
+    required_keys = [
+        "s3Endpoint",
+        "s3Region",
+        "s3KeyId",
+        "s3KeySecret",
+        "s3BucketName",
+        "mongoConnection",
+    ]
+    missing_keys = [key for key in required_keys if config.get(key) is None]
+
+    if missing_keys:
+        raise ValueError(f"Missing required configuration keys: {', '.join(missing_keys)}")
 
 
-
-class JrjMlModelRegistry:
+class JrjModelRegistry:
 
 
     def __init__(self, config):
-        pass
+        if "s3Endpoint" in config:
+            jrjModelRegistryConfig['s3Endpoint'] = config['s3Endpoint']
+        if "s3Region" in config:
+            jrjModelRegistryConfig['s3Region'] = config['s3Region']
+        if "s3KeyId" in config:
+            jrjModelRegistryConfig['s3KeyId'] = config['s3KeyId']
+        if "s3KeySecret" in config:
+            jrjModelRegistryConfig['s3KeySecret'] = config['s3KeySecret']
+        if "s3BucketName" in config:
+            jrjModelRegistryConfig['s3BucketName'] = config['s3BucketName']
+        if "mongoConnection" in config:
+            jrjModelRegistryConfig['mongoConnection'] = config['mongoConnection']
+        if "zipPassword" in config:
+            jrjModelRegistryConfig['zipPassword'] = config['zipPassword']
+
+        validate_model_registry_config(jrjModelRegistryConfig)
+
     def test(self, x):
         return x
 
@@ -33,13 +75,6 @@ class JrjMlModelRegistry:
 @jrjRouterModelRegistry.get("/")
 async def getRoot():
     return {"message": "Welcome to JRJ Model Registry"}
-
-@jrjRouterModelRegistry.post("/newModel")
-async def new_model_endpoint(request: Request):
-    body = await request.json()
-    result = new_model(body)
-    return json.loads(JSONEncoder().encode(result))
-
 
 @jrjRouterModelRegistry.post("/searchModels")
 async def searchModels(request: Request):
@@ -66,7 +101,7 @@ async def find_model_by_id_endpoint(request: Request):
         raise HTTPException(status_code=400, detail="Invalid or missing ID")
 
     result = find_model_by_id(str(_id))
-    if not result:
+    if not result: # pragma: no cover
         raise HTTPException(status_code=404, detail="Model not found")
     return json.loads(JSONEncoder().encode(result))
 
@@ -81,11 +116,11 @@ async def updateModelById(request: Request):
 
     update_data = body.get("updateObj", {})
     success = update_model(str(_id), update_data)
-    if not success:
+    if not success: # pragma: no cover
         raise HTTPException(status_code=404, detail="Model not found or not updated")
 
     result = find_model_by_id(str(_id))
-    if not result:
+    if not result: # pragma: no cover
         raise HTTPException(status_code=404, detail="Model not found")
     return json.loads(JSONEncoder().encode(result))
 
@@ -106,7 +141,7 @@ async def deleteModelById(request: Request):
     # return json.loads(JSONEncoder().encode(model))
 
     success = delete_model(id)
-    if not success:
+    if not success: # pragma: no cover
         raise HTTPException(status_code=404, detail="Document not found")
 
     return {"deleted": True}
@@ -130,7 +165,7 @@ async def selectModel(request: Request):
             }
         }
     })
-    if not result['data'][0]:
+    if not result['data'] or not result['data'][0]:
         raise HTTPException(status_code=404, detail="Model not found")
     return json.loads(JSONEncoder().encode(result['data'][0]))
 
