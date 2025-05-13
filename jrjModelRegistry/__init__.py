@@ -1,14 +1,14 @@
 import os
 
 jrjModelRegistryConfig = {
-    "s3Endpoint": os.environ.get("JRJ_MODEL_REGISTRY_S3_ENDPOINT", None),
-    "s3Region": os.environ.get("JRJ_MODEL_REGISTRY_S3_REGION", None),
-    "s3KeyId": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_ID", None),
-    "s3KeySecret": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_SECRET", None),
-    "s3BucketName": os.environ.get("JRJ_MODEL_REGISTRY_S3_BUCKET_NAME", None),
-    # "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY1", None),
-    "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY", None),
-    "zipPassword": os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD", None),
+    "s3Endpoint": os.environ.get("JRJ_MODEL_REGISTRY_S3_ENDPOINT", "JRJ_MODEL_REGISTRY_S3_ENDPOINT"),
+    "s3Region": os.environ.get("JRJ_MODEL_REGISTRY_S3_REGION", "JRJ_MODEL_REGISTRY_S3_REGION"),
+    "s3KeyId": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_ID", "JRJ_MODEL_REGISTRY_S3_KEY_ID"),
+    "s3KeySecret": os.environ.get("JRJ_MODEL_REGISTRY_S3_KEY_SECRET", "JRJ_MODEL_REGISTRY_S3_KEY_SECRET"),
+    "s3BucketName": os.environ.get("JRJ_MODEL_REGISTRY_S3_BUCKET_NAME", "JRJ_MODEL_REGISTRY_S3_BUCKET_NAME"),
+    # "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY1", "JRJ_MONGODB_MODEL_REGISTRY1"),
+    "mongoConnection": os.environ.get("JRJ_MONGODB_MODEL_REGISTRY", "JRJ_MONGODB_MODEL_REGISTRY"),
+    "zipPassword": os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD", "JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD"),
 }
 
 import datetime
