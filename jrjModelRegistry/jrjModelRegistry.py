@@ -11,6 +11,7 @@ from pathlib import Path
 from jrjModelRegistry.mongo import new_model
 from . import jrjModelRegistryConfig
 import pyzipper
+from functools import partial
 
 import os
 
@@ -20,7 +21,10 @@ from .mongo import delete_model, search_models_common
 
 
 
-
+async def transformer(test = None):
+    return test
+def mainPredictor(x):
+    return x
 
 
 def registerAJrjModel(model, config):
@@ -35,6 +39,14 @@ def registerAJrjModel(model, config):
 
     if not modelName or not version:
         raise ValueError("`modelName` and `version` are required in the config.")
+    if hasattr(model, "transformer"):
+        model.transformer = partial(model.transformer)
+    else:
+        model.transformer = partial(transformer)
+    if hasattr(model, "mainPredictor"):
+        model.mainPredictor = partial(model.mainPredictor)
+    else:
+        model.mainPredictor = partial(mainPredictor)
 
     filename = f"{modelName}__{version}.{modelFileType}"
     zip_filename = f"{filename}.zip"
