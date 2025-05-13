@@ -14,6 +14,10 @@ import pyzipper
 from functools import partial
 
 import os
+import dill
+from dill.detect import trace
+
+from dill.detect import baditems
 
 
 
@@ -21,7 +25,7 @@ from .mongo import delete_model, search_models_common
 
 
 
-async def transformer(test = None):
+async def transformer(test):
     return test
 def mainPredictor(x):
     return x
@@ -48,6 +52,25 @@ def registerAJrjModel(model, config):
     else:
         model.mainPredictor = partial(mainPredictor)
 
+    issues = baditems(model)
+    if issues:
+        for name, problem in issues.items():
+            print(f"❌  baditems {name}: {problem}")
+
+    # for attr in dir(model):
+    #     if not attr.startswith("__"):
+    #         value = getattr(model, attr)
+    #         if value is not None:
+    #             try:
+    #                 trace(True)(value)
+    #                 # print(f"Tracing model.{attr}:")
+    #                 # print(trace(True)(value))
+    #             except Exception as e:
+    #                 print(f"Could not trace {attr}: {e}")
+
+    # print(dill.detect.trace(True)(model.mainPredictor))
+    # print(dill.detect.trace(True)(model.transformer))
+
     filename = f"{modelName}__{version}.{modelFileType}"
     zip_filename = f"{filename}.zip"
 
@@ -59,7 +82,7 @@ def registerAJrjModel(model, config):
 
     # Serialize model
     with open(model_path, "wb") as f:
-        pickle.dump(model, f)
+        pickle.dump(model, f, recurse=True)
     config['modelSizeBytes'] = model_path.stat().st_size
 
     # Get password from env

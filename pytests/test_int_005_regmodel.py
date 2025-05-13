@@ -148,7 +148,7 @@ def test_newRegisterModel():
     result = requestSearch.json()
     print(result)
 
-    async def transformer(test = None):
+    async def transformer(test):
         return test
     def mainPredictor(x):
         return x
