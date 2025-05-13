@@ -65,7 +65,7 @@ def registerAJrjModel(model, config):
     # Upload to S3 using pre-signed URL
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+        endpoint_url = f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
         region_name=jrjModelRegistryConfig.get('s3Region'),
         aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
         aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
@@ -142,7 +142,7 @@ def deleteAJrjModelAsset(s3AssetPath):
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+            endpoint_url = f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
             region_name=jrjModelRegistryConfig.get('s3Region'),
             aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
             aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
@@ -193,7 +193,7 @@ def loadAJrjModel(modelObj):
     # Set up S3 client
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+        endpoint_url = f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
         region_name=jrjModelRegistryConfig.get('s3Region'),
         aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
         aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
