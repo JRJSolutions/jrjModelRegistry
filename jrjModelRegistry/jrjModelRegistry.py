@@ -19,6 +19,10 @@ from dill.detect import trace
 
 from dill.detect import baditems
 
+import copy
+import dill
+import types
+
 
 
 from .mongo import delete_model, search_models_common
@@ -30,6 +34,29 @@ async def transformer(test):
 def mainPredictor(x):
     return x
 
+
+def is_dillable(obj):
+    try:
+        dill.dumps(obj, recurse=True)
+        return True
+    except Exception:
+        return False
+
+def clean_non_dillable_attributes(obj):
+    """
+    Returns a deepcopy of `obj` with non-pickleable attributes set to None.
+    """
+    obj_copy = copy.deepcopy(obj)
+    for attr in dir(obj_copy):
+        if attr.startswith("__") and attr.endswith("__"):
+            continue
+        try:
+            value = getattr(obj_copy, attr)
+            if not is_dillable(value):
+                setattr(obj_copy, attr, None)
+        except Exception:
+            setattr(obj_copy, attr, None)
+    return obj_copy
 
 def registerAJrjModel(model, config):
     modelName = config.get('modelName')
@@ -80,8 +107,7 @@ def registerAJrjModel(model, config):
     model_path = local_dir / filename
     zip_path = local_dir / zip_filename
 
-    import copy
-    clean_copy = copy.deepcopy(model)
+    clean_copy = clean_non_dillable_attributes(model)
 
     # Serialize model
     with open(model_path, "wb") as f:
