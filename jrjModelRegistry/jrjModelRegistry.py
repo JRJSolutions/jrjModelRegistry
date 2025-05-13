@@ -82,7 +82,8 @@ def registerAJrjModel(model, config):
 
     # Serialize model
     with open(model_path, "wb") as f:
-        pickle.dump(model, f, recurse=True)
+        pickle.dump(model, f)
+        # pickle.dump(model, f, recurse=True)
     config['modelSizeBytes'] = model_path.stat().st_size
 
     # Get password from env
