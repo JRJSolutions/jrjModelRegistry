@@ -80,9 +80,12 @@ def registerAJrjModel(model, config):
     model_path = local_dir / filename
     zip_path = local_dir / zip_filename
 
+    import copy
+    clean_copy = copy.deepcopy(model)
+
     # Serialize model
     with open(model_path, "wb") as f:
-        pickle.dump(model, f)
+        pickle.dump(clean_copy, f)
         # pickle.dump(model, f, recurse=True)
     config['modelSizeBytes'] = model_path.stat().st_size
 
