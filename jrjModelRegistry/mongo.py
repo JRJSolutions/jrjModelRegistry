@@ -26,7 +26,7 @@ mongoConfigDict = {
 
 
 def initMongodb():
-    clientMongoDb = MongoClient(jrjModelRegistryConfig['mongoConnection'], server_api=ServerApi('1'))
+    clientMongoDb = MongoClient(jrjModelRegistryConfig.get('mongoConnection'), server_api=ServerApi('1'))
     try:
         clientMongoDb.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")

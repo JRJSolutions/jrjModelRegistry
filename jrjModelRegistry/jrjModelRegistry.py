@@ -65,13 +65,13 @@ def registerAJrjModel(model, config):
     # Upload to S3 using pre-signed URL
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
-        region_name=jrjModelRegistryConfig['s3Region'],
-        aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
-        aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
+        endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+        region_name=jrjModelRegistryConfig.get('s3Region'),
+        aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
+        aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
     )
 
-    bucket_name = jrjModelRegistryConfig['s3BucketName']
+    bucket_name = jrjModelRegistryConfig.get('s3BucketName')
 
     try:
         presigned_url = s3.generate_presigned_url(
@@ -142,10 +142,10 @@ def deleteAJrjModelAsset(s3AssetPath):
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
-            region_name=jrjModelRegistryConfig['s3Region'],
-            aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
-            aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
+            endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+            region_name=jrjModelRegistryConfig.get('s3Region'),
+            aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
+            aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
         )
 
         s3.delete_object(Bucket=bucket_name, Key=key)
@@ -193,10 +193,10 @@ def loadAJrjModel(modelObj):
     # Set up S3 client
     s3 = boto3.client(
         "s3",
-        endpoint_url=f'https://{jrjModelRegistryConfig['s3Endpoint']}',
-        region_name=jrjModelRegistryConfig['s3Region'],
-        aws_access_key_id=jrjModelRegistryConfig['s3KeyId'],
-        aws_secret_access_key=jrjModelRegistryConfig['s3KeySecret'],
+        endpoint_url=f'https://{jrjModelRegistryConfig.get('s3Endpoint')}',
+        region_name=jrjModelRegistryConfig.get('s3Region'),
+        aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
+        aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
     )
 
     # Download ZIP if not already downloaded
