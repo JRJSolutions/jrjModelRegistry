@@ -42,7 +42,7 @@ def initMongodb():
         background=True
     )
 
-if jrjModelRegistryConfig.get('mongoConnection'):
+if jrjModelRegistryConfig.get('mongoConnection') != 'JRJ_MONGODB_MODEL_REGISTRY':
     initMongodb()
 
 

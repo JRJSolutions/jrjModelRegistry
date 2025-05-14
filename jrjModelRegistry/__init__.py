@@ -22,7 +22,7 @@ import json
 
 from jrjModelRegistry.jrjModelRegistry import deleteAJrjModelAsset, loadAJrjModel
 
-from .mongo import JSONEncoder, delete_model, find_model_by_id, find_model_by_idAndLoadModel, new_model, search_models, search_models_common, update_model
+from .mongo import JSONEncoder, delete_model, find_model_by_id, find_model_by_idAndLoadModel, initMongodb, new_model, search_models, search_models_common, update_model
 
 
 
@@ -65,6 +65,8 @@ class JrjModelRegistry:
             jrjModelRegistryConfig['mongoConnection'] = config['mongoConnection']
         if "zipPassword" in config:
             jrjModelRegistryConfig['zipPassword'] = config['zipPassword']
+
+        initMongodb()
 
         validate_model_registry_config(jrjModelRegistryConfig)
 
