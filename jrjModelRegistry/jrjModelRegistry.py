@@ -228,7 +228,7 @@ def deleteAJrjModelAsset(s3AssetPath):
 
 
 def loadAJrjModel(modelObj):
-    logging.info(f"Loading model {modelObj.modelName} version {modelObj.verion}")
+    logging.info(f"Loading model {modelObj.get("modelName", "modelName")} version {modelObj.get("version", "version")}")
     """
     Loads a model from a password-protected ZIP file stored in S3 (or from local cache if already downloaded and extracted).
     modelObj must contain:
