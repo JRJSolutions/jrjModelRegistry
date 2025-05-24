@@ -65,6 +65,7 @@ def new_model(dataPayload: dict):
     return find_model_by_id(f"{result.inserted_id}")
 
 
+
 def search_models(input: dict, type: str = "findMany"):
     search_query = {}
 
@@ -72,9 +73,11 @@ def search_models(input: dict, type: str = "findMany"):
         search_query.update(input['where'])
 
     if type == "findMany":
-        cursor = mongoConfigDict['jrjModelRegistryDbColModels'].find(search_query)
+        # --- Optional Projection ---
+        projection = input.get('select')  # Can be None, or a dict of included/excluded fields
+        cursor = mongoConfigDict['jrjModelRegistryDbColModels'].find(search_query, projection)
 
-        # --- Fix for your orderBy format ---
+        # --- Sort ---
         order_by = input.get('orderBy') or []
         if order_by:
             sort_fields = []
