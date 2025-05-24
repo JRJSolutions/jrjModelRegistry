@@ -23,6 +23,14 @@ import copy
 import dill
 import types
 
+import gc
+
+import logging
+import sys
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 
 from .mongo import delete_model, search_models_common
@@ -220,6 +228,7 @@ def deleteAJrjModelAsset(s3AssetPath):
 
 
 def loadAJrjModel(modelObj):
+    logging.info(f"Loading model {modelObj.modelName} version {modelObj.verion}")
     """
     Loads a model from a password-protected ZIP file stored in S3 (or from local cache if already downloaded and extracted).
     modelObj must contain:
@@ -248,7 +257,10 @@ def loadAJrjModel(modelObj):
     if local_model_path.exists():
         try:
             with open(local_model_path, "rb") as f:
-                return pickle.load(f)
+                gc.collect()
+                model = pickle.load(f)
+                gc.collect()
+                return model
         except Exception as e:  # pragma: no cover
             print(f"⚠️ Failed to load cached model. Redownloading... ({e})")
 
@@ -281,6 +293,9 @@ def loadAJrjModel(modelObj):
     # Load model
     try:
         with open(local_model_path, "rb") as f:
-            return pickle.load(f)
+            gc.collect()
+            model = pickle.load(f)
+            gc.collect()
+            return model
     except Exception as e:  # pragma: no cover
         raise RuntimeError(f"❌ Failed to load model: {e}")
