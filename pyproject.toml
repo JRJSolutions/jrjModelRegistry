@@ -1,6 +1,6 @@
 [project]
 name = "jrjModelRegistry"
-version = "0.0.31"
+version = "0.0.32"
 description = "True way to save and serve python models"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -99,3 +99,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["jrjModelRegistry*"]
+
+[tool.setuptools]
+include-package-data = true
