@@ -187,16 +187,24 @@ async def selectModel(request: Request):
     return json.loads(JSONEncoder().encode(result['data'][0]))
 
 
+import inspect
+
 @jrjRouterModelRegistry.post("/selectModelAndPredict")
 async def selectModelAndPredict(request: Request):
     result = await selectModel(request)
     modelObj = find_model_by_idAndLoadModel(result['_id'])
     model = loadAJrjModel(modelObj)
-    request_body_bytes = await request.json()
-    transformedData = await model.transformer(**request_body_bytes['data'])
 
+    request_body_bytes = await request.json()
+    transformer_args = request_body_bytes['data']
+
+    if inspect.iscoroutinefunction(model.transformer):
+        transformedData = await model.transformer(**transformer_args)
+    else:
+        transformedData = model.transformer(**transformer_args)
 
     return model.mainPredictor(transformedData)
+
 
 @jrjRouterModelRegistry.post("/selectDfModelAndReturnFirstItem")
 async def selectDfModelAndReturnFirstItem(request: Request):
