@@ -1,6 +1,6 @@
 [project]
 name = "jrjModelRegistry"
-version = "0.0.32"
+version = "0.0.33"
 description = "True way to save and serve python models"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -102,3 +102,6 @@ include = ["jrjModelRegistry*"]
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.js", "*.css", "*.svg", "*.json"]
