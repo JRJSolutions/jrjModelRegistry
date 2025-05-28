@@ -1,6 +1,6 @@
 {
   "name": "jrjModelRegistry",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "description": "True way to save and serve python models",
   "main": "index.js",
   "repository": "git@github.com:JRJSolutions/jrjModelRegistry.git",
@@ -8,13 +8,28 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
-    "husky": "^9.0.11"
+    "antd": "^5.25.3",
+    "husky": "^9.0.11",
+    "immer": "^10.1.1",
+    "react": "^18.2.0",
+    "react-async-hook": "^4.0.0",
+    "react-dom": "^18.2.0",
+    "react-router": "^7.6.1",
+    "react-router-dom": "^7.6.1",
+    "use-immer": "^0.11.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0"
   },
   "scripts": {
     "increase-version": "./increaseVersion.ts",
     "test": "pytest -s -v",
     "test-cov": "pytest --cov=jrjModelRegistry  --cov-report=html -s -v && open htmlcov/index.html",
     "releaseNewVersionAndAddTag": "./releaseNewVersionAndAddTag.sh",
-    "healthy-check": "ls -la"
+    "healthy-check": "ls -la",
+    "dev": "cd jrjModelRegistry/frontend ; npx vite build --watch",
+    "build": "cd jrjModelRegistry/frontend ; vite build",
+    "preview": "cd jrjModelRegistry/frontend ;  vite preview"
   }
 }

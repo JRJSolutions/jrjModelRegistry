@@ -74,6 +74,21 @@ class JrjModelRegistry:
         return x
 
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+
+def handleDashboard(app):
+    vite_dist_path = os.path.join(os.path.dirname(__file__), "frontend/dist")
+    # Mount static files (CSS, JS, images)
+    app.mount("/assets", StaticFiles(directory=os.path.join(vite_dist_path, "assets")), name="assets")
+    @app.get("/dashboard")
+    @app.get("/dashboard/{full_path:path}")
+    async def serve_react_app(full_path: str = ""):
+        return FileResponse(os.path.join(vite_dist_path, "index.html"))
+
+
 @jrjRouterModelRegistry.get("/")
 async def getRoot():
     return {"message": "Welcome to JRJ Model Registry"}
