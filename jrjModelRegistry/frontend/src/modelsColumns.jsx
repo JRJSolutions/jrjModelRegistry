@@ -3,6 +3,8 @@ import { Button, DatePicker, Input, Select } from "antd";
 import moment from "moment";
 import { apiCallWithToken } from "./utils/apis";
 
+const { TextArea } = Input;
+
 export const modelsColumns = ({
     //
     modelsStateSet,
@@ -18,7 +20,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{text}</span>,
         },
@@ -31,7 +33,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (createdAt) => (
                 <p
@@ -95,7 +97,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (updatedAt) => (
                 <p
@@ -159,7 +161,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{text}</span>,
             filterIcon: (filtered) => <SearchOutlined />,
@@ -203,7 +205,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{text}</span>,
             filterIcon: (filtered) => <SearchOutlined />,
@@ -247,7 +249,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{text}</span>,
             filterIcon: (filtered) => <SearchOutlined />,
@@ -291,7 +293,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{text}</span>,
             filterIcon: (filtered) => <SearchOutlined />,
@@ -335,7 +337,7 @@ export const modelsColumns = ({
             padding: 0,
             sorter: {
                 multiple: 1,
-                compare: () => {},
+                compare: () => { },
             },
             render: (text) => <span style={{ fontSize: "9px" }}>{Number(parseFloat(text || 0).toFixed(3))}</span>,
             filterIcon: (filtered) => <SearchOutlined />,
@@ -460,12 +462,12 @@ export const modelsColumns = ({
             title: "Action",
             // key: "action",
             align: "center",
-            width: 1,
+            width: modelsState?.textboxTestId ? 10 : 1,
             padding: 0,
             render: (row) => {
                 // console.log(row);
                 return (
-                    <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "center", gap: "8px", flexDirection: "column" }}>
                         <Button
                             danger
                             size="small"
@@ -498,6 +500,79 @@ export const modelsColumns = ({
                             }}>
                             Delete
                         </Button>
+                        {
+                            row?.sampleData && !modelsState?.textboxTestId
+                            && <Button
+                                primary
+                                size="small"
+                                onClick={async () => {
+
+                                    modelsStateSet((draft) => {
+                                        draft.textboxTestId = row._id;
+                                        draft.textboxSampleData = JSON.stringify(row?.sampleData, 0, 4)
+                                    });
+                                    return
+                                }}>
+                                Test
+                            </Button>
+                        }
+                        {
+                            modelsState?.textboxTestId == row._id
+
+                            && <>
+                                <TextArea
+                                    //
+                                    value={modelsState?.textboxSampleData || ""}
+                                    onChange={(event) => {
+                                        modelsStateSet((draft) => {
+                                            draft.textboxSampleData = event.target.value;
+                                        });
+                                    }}
+                                    rows={6} />
+                                <Button
+                                    primary
+                                    size="small"
+                                    onClick={async () => {
+                                        try {
+                                            const result = await apiCallWithToken({
+                                                url: "jrjModelRegistry/selectModelAndPredict",
+                                                options: {
+                                                    method: "POST",
+                                                    headers: {},
+                                                    body: JSON.stringify({
+                                                        "where": {
+                                                            "modelName": row.modelName,
+                                                            "version": row.version
+                                                        },
+                                                        "data": JSON.parse(modelsState.textboxSampleData)
+                                                    }),
+                                                },
+                                            });
+                                            alert(`Result for modelName: ${row.modelName} and version ${row.version} is \n${JSON.stringify(result, 0, 4)}`)
+                                            setTimeout(() => {
+                                                if (!modelsState?.needToUpdate) {
+                                                    modelsStateSet((draft) => {
+                                                        draft.needToUpdate = true;
+                                                    });
+                                                }
+                                            }, 500);
+                                        } catch (error) {
+                                            console.error("Error deleting:", error);
+                                            alert("Error during deleting.");
+                                        }
+
+                                        modelsStateSet((draft) => {
+                                            draft.textboxTestId = null;
+                                            draft.textboxSampleData = null
+                                        });
+                                        return
+
+                                    }}>
+                                    run
+                                </Button>
+                            </>
+
+                        }
                     </div>
                 );
             },

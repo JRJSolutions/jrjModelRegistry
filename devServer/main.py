@@ -1,11 +1,25 @@
-from fastapi import FastAPI
 
+
+import copy
 import sys
 import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from pathlib import Path
+
+env_path = Path(".env-live")
+
+
+if env_path.exists():
+    # print('asdasdad')
+    load_dotenv(dotenv_path=env_path)
+
+
+else:
+    load_dotenv()
+
+from fastapi import FastAPI
 
 sys.path.insert(
     0,
@@ -17,7 +31,10 @@ sys.path.insert(
     )
 )
 
-from jrjModelRegistry import handleDashboard, jrjRouterModelRegistry
+from jrjModelRegistry import handleDashboard, jrjRouterModelRegistry,jrjModelRegistryConfig
+
+# originalConfig = copy.deepcopy(jrjModelRegistryConfig)
+# print(originalConfig)
 
 app = FastAPI()
 

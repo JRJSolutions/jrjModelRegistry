@@ -177,3 +177,4 @@ node_modules
 .~*
 .DS_Store
 !jrjModelRegistry/frontend/dist
+.env-live
