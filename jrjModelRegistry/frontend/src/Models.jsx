@@ -9,6 +9,8 @@ import { Alert, Button, ConfigProvider, Flex, Pagination, Table, Typography, not
 import { useState } from "react";
 import { getConfigUtils } from "./configUtils";
 import { modelsColumns } from "./modelsColumns";
+import ReactJson from 'react-json-view'
+
 const { Text } = Typography;
 //
 export default function Models({ mainState, setMainState, projectSlug }) {
@@ -182,7 +184,7 @@ export default function Models({ mainState, setMainState, projectSlug }) {
                                         style={{
                                             width: "100%",
                                         }}>
-                                        {window.ReactJson && <window.ReactJson src={record} collapsed={false} />}
+                                        <ReactJson src={record} collapsed={false} />
                                     </Flex>
                                 );
                             },
