@@ -1,6 +1,6 @@
 [project]
 name = "jrjModelRegistry"
-version = "0.0.36"
+version = "0.0.37"
 description = "True way to save and serve python models"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -84,7 +84,8 @@ dependencies = [
     "uvicorn==0.34.2",
     "uvloop==0.21.0",
     "watchfiles==1.0.5",
-    "websockets==15.0.1"
+    "websockets==15.0.1",
+    "statsmodels==0.14.4"
 ]
 
 [project.urls]

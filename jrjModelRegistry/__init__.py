@@ -25,6 +25,8 @@ from jrjModelRegistry.jrjModelRegistry import deleteAJrjModelAsset, loadAJrjMode
 from .mongo import JSONEncoder, delete_model, find_model_by_id, find_model_by_idAndLoadModel, initMongodb, new_model, search_models, search_models_common, update_model
 
 
+import pandas as pd
+import statsmodels.api as sm
 
 jrjRouterModelRegistry = APIRouter(
     prefix="/jrjModelRegistry",   # Automatically prefixes all routes
@@ -72,21 +74,6 @@ class JrjModelRegistry:
 
     def test(self, x):
         return x
-
-
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import os
-
-
-def handleDashboard(app):
-    vite_dist_path = os.path.join(os.path.dirname(__file__), "frontend/dist")
-    # Mount static files (CSS, JS, images)
-    app.mount("/assets", StaticFiles(directory=os.path.join(vite_dist_path, "assets")), name="assets")
-    @app.get("/dashboard")
-    @app.get("/dashboard/{full_path:path}")
-    async def serve_react_app(full_path: str = ""):
-        return FileResponse(os.path.join(vite_dist_path, "index.html"))
 
 
 @jrjRouterModelRegistry.get("/")
@@ -187,24 +174,16 @@ async def selectModel(request: Request):
     return json.loads(JSONEncoder().encode(result['data'][0]))
 
 
-import inspect
-
 @jrjRouterModelRegistry.post("/selectModelAndPredict")
 async def selectModelAndPredict(request: Request):
     result = await selectModel(request)
     modelObj = find_model_by_idAndLoadModel(result['_id'])
     model = loadAJrjModel(modelObj)
-
     request_body_bytes = await request.json()
-    transformer_args = request_body_bytes['data']
+    transformedData = await model.transformer(**request_body_bytes['data'])
 
-    if inspect.iscoroutinefunction(model.transformer):
-        transformedData = await model.transformer(**transformer_args)
-    else:
-        transformedData = model.transformer(**transformer_args)
 
     return model.mainPredictor(transformedData)
-
 
 @jrjRouterModelRegistry.post("/selectDfModelAndReturnFirstItem")
 async def selectDfModelAndReturnFirstItem(request: Request):
