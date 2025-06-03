@@ -1,6 +1,6 @@
 [project]
 name = "jrjModelRegistry"
-version = "0.0.42"
+version = "0.0.43"
 description = "True way to save and serve python models"
 readme = "README.md"
 requires-python = ">=3.8"
