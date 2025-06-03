@@ -9,6 +9,7 @@
   "private": false,
   "dependencies": {
     "antd": "^5.25.3",
+    "esbuild": "^0.25.0",
     "husky": "^9.0.11",
     "immer": "^10.1.1",
     "react": "^18.2.0",
@@ -32,5 +33,8 @@
     "dev": "cd jrjModelRegistry/frontend ; npx vite build --watch",
     "build": "cd jrjModelRegistry/frontend ; vite build",
     "preview": "cd jrjModelRegistry/frontend ;  vite preview"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   }
 }
