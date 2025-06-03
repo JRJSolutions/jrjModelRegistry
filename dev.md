@@ -10,3 +10,7 @@ jupyter notebook \
     --notebook-dir="." \
     --ip=0.0.0.0 --port=3225
 ```
+
+```
+fastapi dev devServer/main.py
+```
