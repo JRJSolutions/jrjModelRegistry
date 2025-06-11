@@ -191,21 +191,104 @@ async def selectModel(request: Request):
 
 import inspect
 
+import hashlib
+from pathlib import Path
+
+
+
+CACHE_DIR = Path.cwd() / ".~jrjModelRegistryCache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 @jrjRouterModelRegistry.post("/selectModelAndPredict")
 async def selectModelAndPredict(request: Request):
-    result = await selectModel(request)
-    modelObj = find_model_by_idAndLoadModel(result['_id'])
-    model = loadAJrjModel(modelObj)
+    body = await request.json()
+    use_cache = body.get("cache", False)
 
-    request_body_bytes = await request.json()
-    transformer_args = request_body_bytes['data']
+    if use_cache:
+        # 1. Hash the request body
+        request_body_str = json.dumps(body, sort_keys=True)
+        body_hash = hashlib.sha256(request_body_str.encode()).hexdigest()
+        cache_file = CACHE_DIR / f"{body_hash}.json"
 
+        # 2. Return cached result if it exists
+        if cache_file.exists():
+            with open(cache_file, "r") as f:
+                return json.load(f)
+
+    # 3. Query model
+    orderby = body.get('orderBy', [{"createdAt": "desc"}])
+    result = search_models({
+        "orderBy": orderby,
+        "where": body['where'],
+        "pagination": {"page": 1, "size": 1000},
+        "select": {
+            "modelName": 1,
+            "version": 1,
+            "s3Url": 1,
+            "_id": 1
+        }
+    }, "findMany")
+
+    if not result or not result[0]:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    model = loadAJrjModel(result[0])
+    transformer_args = body['data']
+
+    # 4. Predict
     if inspect.iscoroutinefunction(model.transformer):
         transformedData = await model.transformer(**transformer_args)
     else:
         transformedData = model.transformer(**transformer_args)
 
-    return model.mainPredictor(transformedData)
+    res = model.mainPredictor(transformedData)
+
+    # 5. Save to cache only if caching is enabled
+    if use_cache:
+        with open(cache_file, "w") as f:
+            json.dump(res, f)
+
+    return res
+
+
+# @jrjRouterModelRegistry.post("/selectModelAndPredict")
+# async def selectModelAndPredict(request: Request):
+#     body = await request.json()
+#     body = await request.json()
+#     orderby = body.get('orderBy', [
+#         {"createdAt": "desc"}
+#     ])
+#     result = search_models(
+#         {
+#             "orderBy": orderby,
+#             "where": body['where'],
+#             "pagination": {
+#                 "page": 1,
+#                 "size": 1000
+#             },
+#             "select": {
+#                 "modelName": 1,
+#                 "version": 1,
+#                 "s3Url": 1,
+#                 "_id": 1
+#             }
+#         },
+#         "findMany"
+#     )
+#     if  not result[0]:
+#         raise HTTPException(status_code=404, detail="Model not found")
+#     model = loadAJrjModel(result[0])
+#     request_body_bytes = await request.json()
+#     transformer_args = request_body_bytes['data']
+
+#     if inspect.iscoroutinefunction(model.transformer):
+#         transformedData = await model.transformer(**transformer_args)
+#     else:
+#         transformedData = model.transformer(**transformer_args)
+
+#     res = model.mainPredictor(transformedData)
+
+#     retrun res
 
 
 @jrjRouterModelRegistry.post("/selectDfModelAndReturnFirstItem")

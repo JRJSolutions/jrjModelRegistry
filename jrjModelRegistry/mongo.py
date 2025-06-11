@@ -36,6 +36,7 @@ def initMongodb():
     jrjModelRegistryDb = clientMongoDb["jrjModelRegistry"]
     mongoConfigDict['jrjModelRegistryDbColModels'] = jrjModelRegistryDb["models"]
     mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("modelName", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("createdAt", 1)], background=True)
     mongoConfigDict['jrjModelRegistryDbColModels'].create_index(
         [("modelName", 1), ("version", 1)],
         unique=True,
@@ -51,7 +52,14 @@ def find_model_by_id(id: str):
     return json.loads(JSONEncoder().encode(result))
 
 def find_model_by_idAndLoadModel(id: str):
-    return find_model_by_id(id)
+    projection = {
+        "modelName": 1,
+        "version": 1,
+        "s3Url": 1,
+        "_id": 1  # optionally exclude _id if not needed
+    }
+    result = mongoConfigDict['jrjModelRegistryDbColModels'].find_one({"_id": ObjectId(id)}, projection)
+    return json.loads(JSONEncoder().encode(result))
 
 def new_model(dataPayload: dict):
     now = datetime.now(UTC)
