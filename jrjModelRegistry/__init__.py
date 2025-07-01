@@ -239,11 +239,15 @@ async def selectModelAndPredict(request: Request):
     model = loadAJrjModel(result[0])
     transformer_args = body['data']
 
-    # 4. Predict
-    if inspect.iscoroutinefunction(model.transformer):
-        transformedData = await model.transformer(**transformer_args)
+    transferDataForce = body.get("transferDataForce", None)
+    if transferDataForce:
+        transformedData = transferDataForce
     else:
-        transformedData = model.transformer(**transformer_args)
+        # 4. Predict
+        if inspect.iscoroutinefunction(model.transformer):
+            transformedData = await model.transformer(**transformer_args)
+        else:
+            transformedData = model.transformer(**transformer_args)
 
     res = model.mainPredictor(transformedData)
 
