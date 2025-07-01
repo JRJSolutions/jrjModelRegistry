@@ -237,8 +237,7 @@ async def selectModelAndPredict(request: Request):
         raise HTTPException(status_code=404, detail="Model not found")
 
     model = loadAJrjModel(result[0])
-    transformer_args = body['data']
-
+    transformer_args = body.get("data", {})
     transferDataForce = body.get("transferDataForce", None)
     if transferDataForce:
         transformedData = transferDataForce
