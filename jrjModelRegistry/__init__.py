@@ -225,7 +225,11 @@ async def selectModelAndPredict(request: Request):
             "modelName": 1,
             "version": 1,
             "s3Url": 1,
-            "_id": 1
+            "ticker": 1,
+            "side": 1,
+            "score": 1,
+            "_id": 1,
+            "helpers": 1
         }
     }, "findMany")
 
@@ -247,6 +251,9 @@ async def selectModelAndPredict(request: Request):
     if use_cache:
         with open(cache_file, "w") as f:
             json.dump(res, f)
+    transferDataFetch = body.get('transferDataFetch', False)
+    if transferDataFetch:
+        res['transferDataFetch'] = transformedData
 
     return res
 
