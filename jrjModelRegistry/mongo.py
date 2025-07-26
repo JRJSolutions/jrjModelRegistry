@@ -37,6 +37,12 @@ def initMongodb():
     mongoConfigDict['jrjModelRegistryDbColModels'] = jrjModelRegistryDb["models"]
     mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("modelName", 1)], background=True)
     mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("createdAt", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("ticker", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("side", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("score", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("score_trainset", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("version", 1)], background=True)
+    mongoConfigDict['jrjModelRegistryDbColModels'].create_index([("last_timeStamp", 1)], background=True)
     mongoConfigDict['jrjModelRegistryDbColModels'].create_index(
         [("modelName", 1), ("version", 1)],
         unique=True,
