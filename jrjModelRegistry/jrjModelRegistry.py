@@ -226,76 +226,68 @@ def deleteAJrjModelAsset(s3AssetPath):
         print(f"❌ Failed to delete S3 asset '{s3AssetPath}': {e}")
         return False
 
+def loadAJrjModel(modelObj, max_retries=4):
+    logging.info(f"Loading model {modelObj.get('modelName', 'modelName')} version {modelObj.get('version', 'version')}")
 
-def loadAJrjModel(modelObj):
-    logging.info(f"Loading model {modelObj.get("modelName", "modelName")} version {modelObj.get("version", "version")}")
-    """
-    Loads a model from a password-protected ZIP file stored in S3 (or from local cache if already downloaded and extracted).
-    modelObj must contain:
-      - 's3Url': str, e.g. 'bucket-name/path/to/model__version.pkl.zip'
-    """
     s3_url = modelObj.get("s3Url")
-    if not s3_url or "/" not in s3_url: # pragma: no cover
+    if not s3_url or "/" not in s3_url:  # pragma: no cover
         raise ValueError("Invalid or missing `s3Url` in modelObj")
 
     bucket_name, key = s3_url.split("/", 1)
     zip_password = jrjModelRegistryConfig.get("zipPassword")
-    if not zip_password: # pragma: no cover
+    if not zip_password:  # pragma: no cover
         raise EnvironmentError("zipPassword is not set")
 
-    # Extract file names
     zip_filename = Path(key).name
     model_filename = zip_filename.replace(".zip", "")
-    # Local paths
     local_dir = Path.cwd() / ".~jrjModelRegistry"
     local_dir.mkdir(parents=True, exist_ok=True)
 
     local_zip_path = local_dir / zip_filename
     local_model_path = local_dir / model_filename
 
-    # If already extracted, just load it
+    # If already extracted, try loading
     if local_model_path.exists():
         try:
             with open(local_model_path, "rb") as f:
                 gc.collect()
-                model = pickle.load(f)
-                gc.collect()
-                return model
+                return pickle.load(f)
         except Exception as e:  # pragma: no cover
             print(f"⚠️ Failed to load cached model. Redownloading... ({e})")
 
-    # Set up S3 client
+    # Setup S3 client
     s3 = boto3.client(
         "s3",
-        endpoint_url = f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
+        endpoint_url=f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
         region_name=jrjModelRegistryConfig.get('s3Region'),
         aws_access_key_id=jrjModelRegistryConfig.get('s3KeyId'),
         aws_secret_access_key=jrjModelRegistryConfig.get('s3KeySecret'),
     )
 
-    # Download ZIP if not already downloaded
-    if not local_zip_path.exists():
+    for attempt in range(1, max_retries + 1):
         try:
-            with open(local_zip_path, "wb") as f:
-                s3.download_fileobj(bucket_name, key, f)
-        except Exception as e:  # pragma: no cover
-            raise RuntimeError(f"❌ Failed to download ZIP from S3: {e}")
+            # Download ZIP if not already downloaded or if retrying
+            if not local_zip_path.exists() or attempt > 1:
+                if local_zip_path.exists():
+                    local_zip_path.unlink()  # Remove old file
+                with open(local_zip_path, "wb") as f:
+                    s3.download_fileobj(bucket_name, key, f)
 
-    # Extract ZIP
-    try:
-        with pyzipper.AESZipFile(local_zip_path, 'r') as zf:
-            zf.setpassword(zip_password.encode())
-            with open(local_model_path, "wb") as out_file:
-                out_file.write(zf.read(model_filename))
-    except Exception as e:  # pragma: no cover
-        raise RuntimeError(f"❌ Failed to extract ZIP file: {e}")
+            # Extract ZIP
+            with pyzipper.AESZipFile(local_zip_path, 'r') as zf:
+                zf.setpassword(zip_password.encode())
+                with open(local_model_path, "wb") as out_file:
+                    out_file.write(zf.read(model_filename))
 
-    # Load model
-    try:
-        with open(local_model_path, "rb") as f:
-            gc.collect()
-            model = pickle.load(f)
-            gc.collect()
-            return model
-    except Exception as e:  # pragma: no cover
-        raise RuntimeError(f"❌ Failed to load model: {e}")
+            # Load model after successful extraction
+            with open(local_model_path, "rb") as f:
+                gc.collect()
+                return pickle.load(f)
+
+        except Exception as e:
+            if "extract ZIP file" in str(e) or attempt < max_retries:
+                logging.warning(f"❌ Failed to extract ZIP file on attempt {attempt}: {e}")
+                if local_zip_path.exists():
+                    local_zip_path.unlink()
+            else:
+                raise RuntimeError(f"❌ Failed to extract ZIP file after {max_retries} attempts: {e}")
