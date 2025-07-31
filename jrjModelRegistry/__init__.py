@@ -1,4 +1,5 @@
 import os
+from bson import json_util
 
 jrjModelRegistryConfig = {
     "s3Endpoint": os.environ.get("JRJ_MODEL_REGISTRY_S3_ENDPOINT", "JRJ_MODEL_REGISTRY_S3_ENDPOINT"),
@@ -78,6 +79,7 @@ class JrjModelRegistry:
 
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.encoders import jsonable_encoder
 import os
 
 
@@ -199,6 +201,7 @@ from pathlib import Path
 CACHE_DIR = Path.cwd() / ".~jrjModelRegistryCache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+
 @jrjRouterModelRegistry.post("/selectModelAndPredict")
 async def selectModelAndPredict(request: Request):
     body = await request.json()
@@ -239,6 +242,7 @@ async def selectModelAndPredict(request: Request):
     model = loadAJrjModel(result[0])
     transformer_args = body.get("data", {})
     transferDataForce = body.get("transferDataForce", None)
+
     if transferDataForce:
         transformedData = transferDataForce
     else:
@@ -250,13 +254,24 @@ async def selectModelAndPredict(request: Request):
 
     res = model.mainPredictor(transformedData)
 
+    # Ensure res is a dictionary
+    if isinstance(res, str):
+        try:
+            res = json.loads(res)
+        except json.JSONDecodeError:
+            res = {"result": res}
+
     # 5. Save to cache only if caching is enabled
     if use_cache:
         with open(cache_file, "w") as f:
             json.dump(res, f)
-    transferDataFetch = body.get('transferDataFetch', False)
-    if transferDataFetch:
+
+    # Optionally include the transformed data
+    if body.get('transferDataFetch', False):
         res['transferDataFetch'] = transformedData
+
+    # Include model metadata safely
+    res['modelObj'] = json.loads(json_util.dumps(result[0]))
 
     return res
 
