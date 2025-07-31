@@ -271,7 +271,8 @@ async def selectModelAndPredict(request: Request):
         res['transferDataFetch'] = transformedData
 
     # Include model metadata safely
-    res['modelObj'] = json.loads(json_util.dumps(result[0]))
+    # res['modelObj'] = json.loads(json_util.dumps(result[0]))
+    res['modelObj'] = json.loads(JSONEncoder().encode(result[0]))
 
     return res
 
