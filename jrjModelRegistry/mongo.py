@@ -11,13 +11,34 @@ from datetime import datetime, UTC
 import os
 from . import jrjModelRegistryConfig
 
+import json
+import math
+from datetime import datetime
+from bson import ObjectId
+from decimal import Decimal
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, ObjectId):
             return str(o)
         if isinstance(o, datetime):
             return o.isoformat()
+        if isinstance(o, Decimal):
+            return float(o)  # or str(o) if you want exact precision
         return super().default(o)
+    def encode(self, o):
+        def scrub(x):
+            if isinstance(x, float):
+                if math.isnan(x) or math.isinf(x):
+                    return None  # replace NaN/Inf with null
+                return x
+            if isinstance(x, dict):
+                return {k: scrub(v) for k, v in x.items()}
+            if isinstance(x, (list, tuple)):
+                return [scrub(v) for v in x]
+            return x
+
+        return super().encode(scrub(o))
 
 jrjModelRegistryDb = ''
 mongoConfigDict = {
