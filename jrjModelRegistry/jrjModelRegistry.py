@@ -28,14 +28,94 @@ import gc
 import logging
 import sys
 
-
 import os
 import zstandard as zstd
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from boto3.s3.transfer import TransferConfig  # ✅ NEW IMPORT
+
 MAGIC_HEADER = b"JRJ1"  # simple format/version marker
+
+
+CHUNK_SIZE = 64 * 1024 * 1024  # 64 MB per chunk, safe and comfy
+
+
+def encrypt_file_with_password(src_path: Path, dst_path: Path, password: str, chunk_size: int = CHUNK_SIZE):
+    """
+    Encrypt a file in chunks with AES-GCM using a password-derived key.
+
+    Format:
+        MAGIC_HEADER (4)
+        SALT (16)
+        CHUNK_SIZE (4, big-endian)
+        REPEAT:
+            CIPHERTEXT_LEN (8, big-endian)
+            CIPHERTEXT (variable, contains AES-GCM tag)
+    Nonce = chunk_index encoded as 12 bytes big-endian.
+    """
+    salt = os.urandom(16)
+    key = _derive_key(password, salt)
+    aesgcm = AESGCM(key)
+
+    with open(src_path, "rb") as fin, open(dst_path, "wb") as fout:
+        # Header
+        fout.write(MAGIC_HEADER)
+        fout.write(salt)
+        fout.write(chunk_size.to_bytes(4, "big"))
+
+        chunk_index = 0
+        while True:
+            plaintext_chunk = fin.read(chunk_size)
+            if not plaintext_chunk:
+                break
+
+            nonce = chunk_index.to_bytes(12, "big")
+            ciphertext = aesgcm.encrypt(nonce, plaintext_chunk, None)
+
+            fout.write(len(ciphertext).to_bytes(8, "big"))
+            fout.write(ciphertext)
+
+            chunk_index += 1
+
+
+def decrypt_file_with_password(src_path: Path, dst_path: Path, password: str):
+    """
+    Reverse of encrypt_file_with_password: decrypts a chunked AES-GCM file.
+    """
+    with open(src_path, "rb") as fin, open(dst_path, "wb") as fout:
+        magic = fin.read(4)
+        if magic != MAGIC_HEADER:
+            raise ValueError("Invalid encrypted file header")
+
+        salt = fin.read(16)
+        _chunk_size_bytes = fin.read(4)
+        if len(salt) != 16 or len(_chunk_size_bytes) != 4:
+            raise ValueError("Corrupted encrypted file header")
+
+        key = _derive_key(password, salt)
+        aesgcm = AESGCM(key)
+
+        chunk_index = 0
+        while True:
+            length_bytes = fin.read(8)
+            if not length_bytes:
+                break  # EOF
+
+            ct_len = int.from_bytes(length_bytes, "big")
+            if ct_len <= 0:
+                break
+
+            ciphertext = fin.read(ct_len)
+            if len(ciphertext) != ct_len:
+                raise ValueError("Truncated ciphertext in encrypted file")
+
+            nonce = chunk_index.to_bytes(12, "big")
+            plaintext_chunk = aesgcm.decrypt(nonce, ciphertext, None)
+            fout.write(plaintext_chunk)
+
+            chunk_index += 1
 
 
 def _derive_key(password: str, salt: bytes) -> bytes:
@@ -79,11 +159,7 @@ def decrypt_with_password(blob: bytes, password: str) -> bytes:
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-
 from .mongo import delete_model, search_models_common
-
-
 
 async def transformer(test):
     return test
@@ -100,15 +176,6 @@ def is_dillable(obj):
 
 def clean_non_dillable_attributes(obj):
     obj_copy = copy.deepcopy(obj)
-    # for attr in dir(obj_copy):
-    #     if attr.startswith("__") and attr.endswith("__"):
-    #         continue
-    #     try:
-    #         value = getattr(obj_copy, attr)
-    #         if not is_dillable(value):
-    #             setattr(obj_copy, attr, None)
-    #     except Exception:
-    #         setattr(obj_copy, attr, None)
     return obj_copy
 
 
@@ -185,20 +252,15 @@ def registerAJrjModel(model, config):
 
         config["compressedModelSizeBytes"] = zst_path.stat().st_size
 
-        # Encrypt compressed bytes with same password
-        print("🔐 Encrypting compressed model (AES-GCM + password)...")
-        with open(zst_path, "rb") as f:
-            compressed_data = f.read()
-        encrypted_blob = encrypt_with_password(compressed_data, zip_password)
-
-        with open(enc_path, "wb") as f:
-            f.write(encrypted_blob)
+        # Encrypt compressed file with same password (chunked, streaming)
+        print("🔐 Encrypting compressed model (AES-GCM + password, chunked)...")
+        encrypt_file_with_password(zst_path, enc_path, zip_password)
 
         config["encryptedModelSizeBytes"] = enc_path.stat().st_size
         # For backward compatibility if anything expects this key name:
         config["zippedModelSizeBytes"] = config["encryptedModelSizeBytes"]
 
-        # Upload to S3 using pre-signed URL
+        # Upload to S3 using multipart-aware transfer (NO presigned URL)
         s3 = boto3.client(
             "s3",
             endpoint_url=f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
@@ -210,49 +272,49 @@ def registerAJrjModel(model, config):
         bucket_name = jrjModelRegistryConfig.get('s3BucketName')
         s3_key = enc_filename
 
+        transfer_config = TransferConfig(
+            multipart_threshold=100 * 1024 * 1024,   # 100 MB
+            multipart_chunksize=100 * 1024 * 1024,   # 100 MB per part
+            max_concurrency=8,
+            use_threads=True,
+        )
+
         try:
-            presigned_url = s3.generate_presigned_url(
-                ClientMethod='put_object',
-                Params={'Bucket': bucket_name, 'Key': s3_key},
-                ExpiresIn=600,
-                HttpMethod='PUT'
+            s3.upload_file(
+                Filename=str(enc_path),
+                Bucket=bucket_name,
+                Key=s3_key,
+                Config=transfer_config,
             )
 
-            with open(enc_path, 'rb') as f:
-                response = requests.put(presigned_url, data=f)
+            print(f"✅ Uploaded encrypted ZSTD model to s3://{bucket_name}/{s3_key}")
+            config['s3Url'] = f"{bucket_name}/{s3_key}"
+            res = new_model(config)
 
-            if response.status_code == 200:
-                print(f"✅ Uploaded encrypted ZSTD model to s3://{bucket_name}/{s3_key}")
-                config['s3Url'] = f"{bucket_name}/{s3_key}"
-                res = new_model(config)
+            if keepLastOnly:
+                search_model_result = search_models_common({
+                    "search": {
+                        "orderBy": [{"createdAt": "desc"}],
+                        "where": {
+                            "modelName": modelName,
+                            "version": {"$nin": [version]},
+                        },
+                        "pagination": {"page": 1, "size": 100000},
+                    }
+                })
+                if search_model_result['count'] > 0:
+                    for mm in search_model_result['data']:
+                        s3Url = mm.get('s3Url')
+                        _id = str(mm.get('_id'))
+                        print(f"deleting model {_id} with s3Url {s3Url}")
+                        if s3Url:
+                            deleteAJrjModelAsset(s3Url)
+                        delete_model(_id)
 
-                if keepLastOnly:
-                    search_model_result = search_models_common({
-                        "search": {
-                            "orderBy": [{"createdAt": "desc"}],
-                            "where": {
-                                "modelName": modelName,
-                                "version": {"$nin": [version]},
-                            },
-                            "pagination": {"page": 1, "size": 100000},
-                        }
-                    })
-                    if search_model_result['count'] > 0:
-                        for mm in search_model_result['data']:
-                            s3Url = mm.get('s3Url')
-                            _id = str(mm.get('_id'))
-                            print(f"deleting model {_id} with s3Url {s3Url}")
-                            if s3Url:
-                                deleteAJrjModelAsset(s3Url)
-                            delete_model(_id)
-
-                return res
-            else:  # pragma: no cover
-                print(f"❌ Upload failed via PUT: {response.status_code} {response.text}")
-                return None
+            return res
 
         except Exception as e:  # pragma: no cover
-            print(f"❌ Failed to generate URL or upload: {e}")
+            print(f"❌ Failed to upload encrypted ZSTD model: {e}")
             return None
 
         finally:
@@ -276,7 +338,7 @@ def registerAJrjModel(model, config):
 
         config['zippedModelSizeBytes'] = zip_path.stat().st_size
 
-        # Upload to S3 using pre-signed URL (UNCHANGED BLOCK)
+        # Upload to S3 using multipart-aware transfer (NO presigned URL)
         s3 = boto3.client(
             "s3",
             endpoint_url=f'https://{jrjModelRegistryConfig.get("s3Endpoint")}',
@@ -286,56 +348,57 @@ def registerAJrjModel(model, config):
         )
 
         bucket_name = jrjModelRegistryConfig.get('s3BucketName')
+        s3_key = zip_filename
+
+        transfer_config = TransferConfig(
+            multipart_threshold=100 * 1024 * 1024,   # 100 MB
+            multipart_chunksize=100 * 1024 * 1024,   # 100 MB per part
+            max_concurrency=8,
+            use_threads=True,
+        )
 
         try:
-            presigned_url = s3.generate_presigned_url(
-                ClientMethod='put_object',
-                Params={'Bucket': bucket_name, 'Key': zip_filename},
-                ExpiresIn=600,
-                HttpMethod='PUT'
+            s3.upload_file(
+                Filename=str(zip_path),
+                Bucket=bucket_name,
+                Key=s3_key,
+                Config=transfer_config,
             )
 
-            with open(zip_path, 'rb') as f:
-                response = requests.put(presigned_url, data=f)
+            print(f"✅ Uploaded encrypted ZIP to s3://{bucket_name}/{s3_key}")
+            config['s3Url'] = f"{bucket_name}/{s3_key}"
+            res = new_model(config)
 
-            if response.status_code == 200:
-                print(f"✅ Uploaded encrypted ZIP to s3://{bucket_name}/{zip_filename}")
-                config['s3Url'] = f"{bucket_name}/{zip_filename}"
-                res = new_model(config)
-
-                if keepLastOnly:
-                    search_model_result = search_models_common({
-                        "search": {
-                            "orderBy": [
-                                {"createdAt": "desc"}
-                            ],
-                            "where": {
-                                "modelName": modelName,
-                                "version": {
-                                    "$nin": [version]
-                                }
-                            },
-                            "pagination": {
-                                "page": 1,
-                                "size": 100000
+            if keepLastOnly:
+                search_model_result = search_models_common({
+                    "search": {
+                        "orderBy": [
+                            {"createdAt": "desc"}
+                        ],
+                        "where": {
+                            "modelName": modelName,
+                            "version": {
+                                "$nin": [version]
                             }
+                        },
+                        "pagination": {
+                            "page": 1,
+                            "size": 100000
                         }
-                    })
-                    if search_model_result['count'] > 0:
-                        for mm in search_model_result['data']:
-                            s3Url = mm.get('s3Url')
-                            _id = str(mm.get('_id'))
-                            print(f"deleting model {_id} with s3Url {s3Url}")
-                            if s3Url:
-                                deleteAJrjModelAsset(s3Url)
-                            delete_model(_id)
-                return res
-            else:  # pragma: no cover
-                print(f"❌ Upload failed via PUT: {response.status_code} {response.text}")
-                return None
+                    }
+                })
+                if search_model_result['count'] > 0:
+                    for mm in search_model_result['data']:
+                        s3Url = mm.get('s3Url')
+                        _id = str(mm.get('_id'))
+                        print(f"deleting model {_id} with s3Url {s3Url}")
+                        if s3Url:
+                            deleteAJrjModelAsset(s3Url)
+                        delete_model(_id)
+            return res
 
         except Exception as e:  # pragma: no cover
-            print(f"❌ Failed to generate URL or upload: {e}")
+            print(f"❌ Failed to upload encrypted ZIP: {e}")
             return None
 
         finally:
@@ -454,24 +517,32 @@ def loadAJrjModel(modelObj, max_retries=4):
                     with open(local_model_path, "wb") as out_file:
                         out_file.write(zf.read(model_filename))
 
-            # ---------------- ZSTD + AES PATH (new) ----------------
+            # ---------------- ZSTD + AES PATH (new, chunked) ----------------
             else:  # compression_mode == "zstd"
-                # 1) Read encrypted+compressed blob
-                with open(local_remote_path, "rb") as f:
-                    encrypted_blob = f.read()
+                # We'll decrypt encrypted .zst.enc -> local .zst,
+                # then decompress .zst -> final pickle
+                local_zst_path = local_dir / f"{model_filename}.zst"
 
-                # 2) Decrypt to get ZSTD-compressed bytes
-                decrypted_compressed = decrypt_with_password(
-                    encrypted_blob,
-                    zip_password
-                )
+                # 1) Decrypt encrypted+compressed file to a local .zst file
+                print("🔓 Decrypting encrypted ZSTD model (chunked)...")
+                decrypt_file_with_password(local_remote_path, local_zst_path, zip_password)
 
-                # 3) Decompress with zstd into the final model file
+                # 2) Decompress with zstd into the final model file (streaming)
+                print("🧩 Decompressing ZSTD model...")
                 dctx = zstd.ZstdDecompressor()
-                with open(local_model_path, "wb") as out_file:
+                with open(local_zst_path, "rb") as src, open(local_model_path, "wb") as out_file:
                     with dctx.stream_writer(out_file) as writer:
-                        writer.write(decrypted_compressed)
+                        while True:
+                            chunk = src.read(1024 * 1024)  # 1 MB
+                            if not chunk:
+                                break
+                            writer.write(chunk)
 
+                # Optional: clean up the intermediate .zst
+                try:
+                    local_zst_path.unlink()
+                except Exception:
+                    pass
             # Load model after successful extraction/decompression
             with open(local_model_path, "rb") as f:
                 gc.collect()
