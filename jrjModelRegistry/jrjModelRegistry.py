@@ -41,6 +41,13 @@ MAGIC_HEADER = b"JRJ1"  # simple format/version marker
 
 CHUNK_SIZE = 64 * 1024 * 1024  # 64 MB per chunk, safe and comfy
 
+transfer_config = TransferConfig(
+    multipart_threshold=100 * 1024 * 1024,   # 100 MB
+    multipart_chunksize=100 * 1024 * 1024,   # 100 MB per part
+    max_concurrency=8,
+    use_threads=True,
+)
+
 
 def encrypt_file_with_password(src_path: Path, dst_path: Path, password: str, chunk_size: int = CHUNK_SIZE):
     """
@@ -272,12 +279,7 @@ def registerAJrjModel(model, config):
         bucket_name = jrjModelRegistryConfig.get('s3BucketName')
         s3_key = enc_filename
 
-        transfer_config = TransferConfig(
-            multipart_threshold=100 * 1024 * 1024,   # 100 MB
-            multipart_chunksize=100 * 1024 * 1024,   # 100 MB per part
-            max_concurrency=8,
-            use_threads=True,
-        )
+
 
         try:
             s3.upload_file(
@@ -349,13 +351,6 @@ def registerAJrjModel(model, config):
 
         bucket_name = jrjModelRegistryConfig.get('s3BucketName')
         s3_key = zip_filename
-
-        transfer_config = TransferConfig(
-            multipart_threshold=100 * 1024 * 1024,   # 100 MB
-            multipart_chunksize=100 * 1024 * 1024,   # 100 MB per part
-            max_concurrency=8,
-            use_threads=True,
-        )
 
         try:
             s3.upload_file(
@@ -507,8 +502,13 @@ def loadAJrjModel(modelObj, max_retries=4):
             if not local_remote_path.exists() or attempt > 1:
                 if local_remote_path.exists():
                     local_remote_path.unlink()  # Remove old file
-                with open(local_remote_path, "wb") as f:
-                    s3.download_fileobj(bucket_name, key, f)
+
+                s3.download_file(
+                    Bucket=bucket_name,
+                    Key=key,
+                    Filename=str(local_remote_path),
+                    Config=transfer_config,
+    )
 
             # ---------------- ZIP PATH (legacy, unchanged behavior) ----------------
             if compression_mode == "zip":
