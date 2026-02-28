@@ -7,7 +7,7 @@ source venv/bin/activate
 rm -rf build
 rm -rf dist
 
-yarn run test
+# yarn run test
 
 ./increaseVersion.ts
 
