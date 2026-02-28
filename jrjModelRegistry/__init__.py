@@ -11,7 +11,6 @@ jrjModelRegistryConfig = {
     "zipPassword": os.environ.get("JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD", "JRJ_MODEL_REGISTRY_S3_ZIP_PASSWORD"),
 }
 
-import datetime
 from fastapi import APIRouter, HTTPException, Request
 import json
 from bson import ObjectId
@@ -25,8 +24,6 @@ from jrjModelRegistry.jrjModelRegistry import deleteAJrjModelAsset, loadAJrjMode
 from .mongo import JSONEncoder, delete_model, find_model_by_id, find_model_by_idAndLoadModel, initMongodb, new_model, search_models, search_models_common, update_model
 
 
-import pandas as pd
-import statsmodels.api as sm
 
 jrjRouterModelRegistry = APIRouter(
     prefix="/jrjModelRegistry",   # Automatically prefixes all routes
